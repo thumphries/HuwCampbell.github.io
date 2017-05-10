@@ -88,7 +88,7 @@ safe xs x <span class="fu">=</span>
 <span class="kw">import </span><span class="dt">Data.Singletons.Prelude.List</span>
 <span class="kw">import </span><span class="dt">Data.Singletons.TypeLits</span>
 <span class="kw">import </span><span class="dt">Data.Singletons.TH</span></code></pre></div>
-<p>With that out of the was I can define a type level function which returns all the safe locations which a queen can go in a row, given the positions of queens in the previous rows.</p>
+<p>With that out of the way I can define a type level <code>safe</code> function which returns all the safe locations which a queen can go in a row, given the positions of queens in the previous rows.</p>
 <div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">type</span> family <span class="dt">Safe</span> (<span class="ot">b ::</span> [<span class="dt">Nat</span>]) (<span class="ot">a ::</span> <span class="dt">Nat</span>)<span class="ot"> ::</span> <span class="dt">Bool</span> <span class="kw">where</span>
   <span class="dt">Safe</span> xs x <span class="fu">=</span>
     <span class="dt">And</span>

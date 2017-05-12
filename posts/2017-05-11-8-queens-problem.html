@@ -82,12 +82,10 @@ safe xs x <span class="fu">=</span>
 
 <span class="kw">module</span> <span class="dt">Main</span> <span class="kw">where</span>
 
-<span class="kw">import </span><span class="dt">Data.Kind</span> ( <span class="dt">Type</span> )
 <span class="kw">import </span><span class="dt">Data.Singletons</span>
 <span class="kw">import </span><span class="dt">Data.Singletons.Prelude</span>
 <span class="kw">import </span><span class="dt">Data.Singletons.Prelude.List</span>
-<span class="kw">import </span><span class="dt">Data.Singletons.TypeLits</span>
-<span class="kw">import </span><span class="dt">Data.Singletons.TH</span></code></pre></div>
+<span class="kw">import </span><span class="dt">Data.Singletons.TypeLits</span></code></pre></div>
 <p>With that out of the way I can define a type level <code>safe</code> function which returns all the safe locations which a queen can go in a row, given the positions of queens in the previous rows.</p>
 <div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">type</span> family <span class="dt">Safe</span> (<span class="ot">b ::</span> [<span class="dt">Nat</span>]) (<span class="ot">a ::</span> <span class="dt">Nat</span>)<span class="ot"> ::</span> <span class="dt">Bool</span> <span class="kw">where</span>
   <span class="dt">Safe</span> xs x <span class="fu">=</span>
@@ -101,7 +99,7 @@ safe xs x <span class="fu">=</span>
 <p>Below I define my partial application for <code>Safe</code>. Unfortunately, just like Aphyr I still need to do this as Haskell type application can’t be partially applied. But using data kinds and type in type makes this a lot safer here, with a proper type signature keeping everything in place.</p>
 <div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">data</span> <span class="dt">Safe1</span><span class="ot"> ::</span> [<span class="dt">Nat</span>] <span class="ot">-&gt;</span> (<span class="dt">Nat</span> <span class="fu">~&gt;</span> <span class="dt">Bool</span>)
 <span class="kw">type</span> <span class="kw">instance</span> <span class="dt">Apply</span> (<span class="dt">Safe1</span> xs) x <span class="fu">=</span> <span class="dt">Safe</span> xs x</code></pre></div>
-<p>The <code>(~&gt;)</code> and the <code>Apply</code> type family comes from the <code>singletons</code> library for this purpose. Next, we filter a candidate set of positions using the safe function, with the help of some additional type families from <code>Data.Singletons.Prelude.List</code>.</p>
+<p>The <code>(~&gt;)</code> and the <code>Apply</code> type family come from the <code>singletons</code> library, and represent type level functions, and their application respectively. Next, we filter a candidate set of positions using the safe function, with the help of some additional type families from <code>Data.Singletons.Prelude.List</code>.</p>
 <div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">type</span> family <span class="dt">Place</span> (<span class="ot">a ::</span> [<span class="dt">Nat</span>]) (<span class="ot">b ::</span> k)<span class="ot"> ::</span> [[<span class="dt">Nat</span>]] <span class="kw">where</span>
   <span class="dt">Place</span> xs ignore <span class="fu">=</span>
     <span class="dt">Map</span> (<span class="dt">FlipCons1</span> xs) (<span class="dt">Filter</span> (<span class="dt">Safe1</span> xs) (<span class="dt">EnumFromTo</span> <span class="dv">1</span> <span class="dv">8</span>))
@@ -115,12 +113,12 @@ safe xs x <span class="fu">=</span>
 <span class="kw">data</span> <span class="dt">Place2</span><span class="ot"> ::</span> ([<span class="dt">Nat</span>] <span class="fu">~&gt;</span> ignore <span class="fu">~&gt;</span> [[<span class="dt">Nat</span>]])
 <span class="kw">type</span> <span class="kw">instance</span> <span class="dt">Apply</span> (<span class="dt">Place2</span>) xs <span class="fu">=</span> <span class="dt">Place1</span> xs</code></pre></div>
 <p>To write the FoldM we need to perform type application using the <code>Apply</code> instances. This is actually pretty easy, and there is even a <code>(@@)</code> operator to help us here. Again, we also need to define a function for the partially applied recursive term.</p>
-<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">type</span> family <span class="dt">FoldM</span> (<span class="ot"> f ::</span> <span class="dt">TyFun</span> b (<span class="dt">TyFun</span> a [b] <span class="ot">-&gt;</span> <span class="dt">Type</span>) <span class="ot">-&gt;</span> <span class="dt">Type</span>) (<span class="ot"> acc ::</span> b ) (<span class="ot"> over ::</span> [a] )<span class="ot"> ::</span> [b] <span class="kw">where</span>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">type</span> family <span class="dt">FoldM</span> (<span class="ot"> f ::</span> b <span class="fu">~&gt;</span> a <span class="fu">~&gt;</span> [b] ) (<span class="ot"> acc ::</span> b ) (<span class="ot"> over ::</span> [a] )<span class="ot"> ::</span> [b] <span class="kw">where</span>
   <span class="dt">FoldM</span> f acc <span class="ch">'[] = '</span>[ acc ]
   <span class="dt">FoldM</span> f acc ( x <span class="ch">': xs) =</span>
     <span class="dt">ConcatMap</span> (<span class="dt">FoldM1</span> f xs) (f <span class="fu">@@</span> acc <span class="fu">@@</span> x )
 
-<span class="kw">data</span> <span class="dt">FoldM1</span><span class="ot"> ::</span> (<span class="dt">TyFun</span> b (<span class="dt">TyFun</span> a [b] <span class="ot">-&gt;</span> <span class="dt">Type</span>) <span class="ot">-&gt;</span> <span class="dt">Type</span>) <span class="ot">-&gt;</span> [a] <span class="ot">-&gt;</span> (b <span class="fu">~&gt;</span> [b])
+<span class="kw">data</span> <span class="dt">FoldM1</span><span class="ot"> ::</span> ( b <span class="fu">~&gt;</span> a <span class="fu">~&gt;</span> [b] ) <span class="ot">-&gt;</span> [a] <span class="ot">-&gt;</span> ( b <span class="fu">~&gt;</span> [b] )
 <span class="kw">type</span> <span class="kw">instance</span> <span class="dt">Apply</span> (<span class="dt">FoldM1</span> f xs ) acc <span class="fu">=</span> <span class="dt">FoldM</span> f acc xs</code></pre></div>
 <p>Next up is the solution. It’s written almost identically to the term level code above, with a fold over placements.</p>
 <div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">type</span> family <span class="dt">Solutions</span><span class="ot"> ::</span> [[<span class="dt">Nat</span>]] <span class="kw">where</span>
@@ -137,7 +135,8 @@ safe xs x <span class="fu">=</span>
 <h2 id="bonus---as-template-haskell">Bonus - as Template Haskell</h2>
 <p>Interestingly, a lot of what was written above can be generated for us by the <code>singletons</code> library (indeed, this is how the <code>singletons</code> library is written).</p>
 <p>For example, the <code>FoldM</code> type family above can be completely replaced with</p>
-<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="fu">$</span>(singletonsOnly [d|
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span class="kw">import </span><span class="dt">Data.Singletons.TH</span>
+<span class="fu">$</span>(singletonsOnly [d|
   foldM :: (b -&gt; a -&gt; [b]) -&gt; b -&gt; [a] -&gt; [b]
   foldM _ acc [] = [acc]
   foldM f acc (x : xs) =
